@@ -13,6 +13,8 @@ import { DisconnectScreenButton } from "@/components/dashboard/disconnect-screen
 import { CopyCodeButton } from "@/components/dashboard/copy-code-button";
 import { ShareScreenButton } from "@/components/dashboard/share-screen-button";
 import { CollaboratorsList } from "@/components/dashboard/collaborators-list";
+import { RenameScreenForm } from "@/components/dashboard/rename-screen-form";
+import { DeleteScreenButton } from "@/components/dashboard/delete-screen-button";
 
 export default async function ScreenDetailPage({
   params,
@@ -92,7 +94,11 @@ export default async function ScreenDetailPage({
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">{screen.name}</h1>
+            {isOwner ? (
+              <RenameScreenForm screenId={screen.id} initialName={screen.name} />
+            ) : (
+              <h1 className="text-xl font-semibold tracking-tight">{screen.name}</h1>
+            )}
             {!isOwner && (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 You&apos;re a contributor on this screen
@@ -118,6 +124,7 @@ export default async function ScreenDetailPage({
                 <ShareScreenButton screenId={screen.id} />
                 {isPaired && <DisconnectScreenButton screenId={screen.id} />}
               </div>
+              <DeleteScreenButton screenId={screen.id} screenName={screen.name} />
             </div>
           )}
         </div>

@@ -565,7 +565,40 @@ Run `npm run typecheck && npm run lint && npm run build && npm test`
   MVP scale this is an acceptable gap; a "revoke pending invite" action
   would be a small, easy follow-up if needed.
 
-## The MVP is feature-complete, plus screen sharing.
+## Rename and delete a screen
+
+Two small owner-only gaps, added after noticing they were missing:
+
+- **Rename**: click the screen name itself on its detail page (owner only)
+  — same inline-edit pattern as everything else in the dashboard.
+- **Delete**: a "Delete screen" link on the detail page, owner only.
+  Permanently removes the screen and, importantly, cleans up any media
+  that was *only* attached to that screen (both the database row and the
+  actual R2 file) — so deleting a test screen doesn't leave orphaned files
+  silently costing storage forever. Media still attached to another screen
+  (in principle — the current upload flow always attaches to exactly one
+  screen, but the data model allows more) is left untouched.
+
+No migration needed for this — no schema changes, just new API routes
+(`PATCH`/`DELETE /api/screens/:id`) and UI.
+
+### How to test
+
+1. Create a throwaway test screen, upload one image to it.
+2. Click the screen's name on its detail page, type a new name, press
+   Enter or click Save — confirm it updates immediately and persists
+   after a refresh.
+3. Click "Delete screen," confirm the warning dialog, confirm it redirects
+   to the main dashboard and the screen is gone from the list.
+4. Check your R2 bucket — confirm the image you uploaded to that screen
+   is actually gone, not just hidden.
+5. As a contributor (not owner) on a *different* screen, confirm you
+   don't see a rename control or delete option at all — screen name should
+   render as plain, non-interactive text.
+
+Run `npm run typecheck && npm run lint && npm run build && npm test`.
+
+
 
 Every core product requirement from the spec has a real, tested
 implementation: accounts and screens, pairing without admin credentials on
@@ -573,5 +606,6 @@ the TV, direct-to-R2 uploads with no publish step, expiration enforced
 both server- and client-side, offline-first playback that survives a
 dropped connection, wake lock/fullscreen for unattended TV use, a
 dashboard that gives honest, real-time feedback instead of silently
-failing, and minimal owner/contributor screen sharing. Remaining work is
-deployment (Vercel + production R2 CORS + production Supabase config).
+failing, minimal owner/contributor screen sharing, and full screen
+lifecycle management (create, rename, disconnect, delete). It's deployed
+and running live on Vercel.

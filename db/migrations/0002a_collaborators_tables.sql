@@ -1,3 +1,10 @@
+-- Run this in the Supabase SQL editor BEFORE 0002_collaborators_rls.sql.
+--
+-- This exists because drizzle-kit's local migration tracking got out of
+-- sync and reported "no schema changes" even though these tables don't
+-- exist in the database yet. This file creates them directly, matching
+-- lib/db/schema.ts exactly, so RLS policies have something to attach to.
+
 create table if not exists screen_collaborators (
   id uuid primary key default gen_random_uuid(),
   screen_id uuid not null references screens(id) on delete cascade,
