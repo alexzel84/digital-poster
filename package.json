@@ -1,0 +1,49 @@
+{
+  "name": "digital-poster",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "@supabase/ssr": "^0.5.1",
+    "@aws-sdk/client-s3": "^3.658.1",
+    "@aws-sdk/s3-request-presigner": "^3.658.1",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.4",
+    "zod": "^3.23.8",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4",
+    "class-variance-authority": "^0.7.0",
+    "lucide-react": "^0.454.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^22.7.9",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^3.4.14",
+    "postcss": "^8.4.47",
+    "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.28.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.0.0",
+    "vitest": "^2.1.4",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
