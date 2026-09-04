@@ -15,6 +15,7 @@ import { ShareScreenButton } from "@/components/dashboard/share-screen-button";
 import { CollaboratorsList } from "@/components/dashboard/collaborators-list";
 import { RenameScreenForm } from "@/components/dashboard/rename-screen-form";
 import { DeleteScreenButton } from "@/components/dashboard/delete-screen-button";
+import { DuplicateScreenButton } from "@/components/dashboard/duplicate-screen-button";
 
 export default async function ScreenDetailPage({
   params,
@@ -124,6 +125,7 @@ export default async function ScreenDetailPage({
                 <ShareScreenButton screenId={screen.id} />
                 {isPaired && <DisconnectScreenButton screenId={screen.id} />}
               </div>
+              <DuplicateScreenButton screenId={screen.id} screenName={screen.name} />
               <DeleteScreenButton screenId={screen.id} screenName={screen.name} />
             </div>
           )}

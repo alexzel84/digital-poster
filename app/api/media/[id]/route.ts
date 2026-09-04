@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { media, screenMedia, screens } from "@/lib/db/schema";
@@ -129,12 +129,26 @@ export async function DELETE(
       .where(eq(screens.id, screenId));
   }
 
-  try {
-    await deleteObject(existing.storageKey);
-  } catch (err) {
-    // The DB record is already gone — log and move on rather than leaving
-    // the user stuck with an item they can't delete because R2 hiccuped.
-    console.error("[media DELETE] failed to delete R2 object", err);
+  // Screen duplication (see /api/screens/:id/duplicate) creates new media
+  // rows that intentionally share a storageKey with an existing row —
+  // same underlying R2 file, so it isn't re-uploaded/duplicated in
+  // storage. That means deleting ONE of those rows must not delete the
+  // shared file out from under any row that still references it.
+  const [stillReferenced] = await db
+    .select({ id: media.id })
+    .from(media)
+    .where(and(eq(media.storageKey, existing.storageKey), ne(media.id, id)))
+    .limit(1);
+
+  if (!stillReferenced) {
+    try {
+      await deleteObject(existing.storageKey);
+    } catch (err) {
+      // The DB record is already gone — log and move on rather than
+      // leaving the user stuck with an item they can't delete because R2
+      // hiccuped.
+      console.error("[media DELETE] failed to delete R2 object", err);
+    }
   }
 
   return NextResponse.json({ ok: true });

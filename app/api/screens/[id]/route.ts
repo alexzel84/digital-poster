@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { screens, media, screenMedia } from "@/lib/db/schema";
@@ -102,10 +102,22 @@ export async function DELETE(
     await db.delete(media).where(eq(media.id, mediaId));
 
     if (mediaRow) {
-      try {
-        await deleteObject(mediaRow.storageKey);
-      } catch (err) {
-        console.error("[screens DELETE] failed to delete orphaned R2 object", err);
+      // Duplicated screens (see /api/screens/:id/duplicate) create media
+      // rows that intentionally share a storageKey — same underlying R2
+      // file, never re-uploaded. Only delete the actual file if no other
+      // media row still points at it.
+      const [stillReferenced] = await db
+        .select({ id: media.id })
+        .from(media)
+        .where(and(eq(media.storageKey, mediaRow.storageKey), ne(media.id, mediaId)))
+        .limit(1);
+
+      if (!stillReferenced) {
+        try {
+          await deleteObject(mediaRow.storageKey);
+        } catch (err) {
+          console.error("[screens DELETE] failed to delete orphaned R2 object", err);
+        }
       }
     }
   }

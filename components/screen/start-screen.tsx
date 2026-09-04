@@ -9,6 +9,10 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    // TV remotes navigate via D-pad + a select/OK button, which acts like
+    // Enter on whatever's currently focused. Without an explicit focus on
+    // load, many TV browsers show nothing as "selected," leaving the
+    // viewer with no idea which direction to press first.
     buttonRef.current?.focus();
   }, []);
 
@@ -16,10 +20,13 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
     // Commercial signage displays (e.g. Samsung's QM series) are often
     // deployed with no remote or pointer device connected at all — they
     // run unattended, controlled over the network rather than by a
-    // handheld remote. Auto-start after a short delay so the screen never
-    // gets stuck waiting for a click that can never happen. Fullscreen/
-    // Wake Lock are still attempted via onStart() either way, and both
-    // already fail silently if a gesture genuinely wasn't available.
+    // handheld remote. On that hardware there may be no way to ever
+    // produce a genuine click/keypress, so requiring one would leave
+    // playback stuck forever. Auto-start after a short delay so the
+    // screen never gets stuck: Fullscreen/Wake Lock are still attempted
+    // via onStart() either way (calling it manually just does it sooner),
+    // and both already fail silently if a gesture genuinely wasn't
+    // available — see player/WakeLockManager.ts and lib/screen/fullscreen.ts.
     const timer = setTimeout(onStart, AUTO_START_DELAY_MS);
     return () => clearTimeout(timer);
   }, [onStart]);

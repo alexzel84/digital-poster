@@ -598,7 +598,44 @@ No migration needed for this — no schema changes, just new API routes
 
 Run `npm run typecheck && npm run lint && npm run build && npm test`.
 
+## Duplicate a screen (multiple TVs, same content)
 
+For the case where you want several physical TVs showing identical
+content (e.g. 3 TVs in a lobby all playing the same poster rotation),
+without re-uploading everything for each one.
+
+**Deliberately not implemented:** a single shared pairing code/token
+across multiple physical TVs. That would break per-device online/offline
+status, and disconnecting would kick every TV off at once instead of
+just one. Each physical TV still pairs independently and keeps its own
+status.
+
+**What it does instead:** "Duplicate to a new screen" on a screen's
+detail page (owner only) creates a brand-new screen — its own pairing
+code, its own independent media rows you can edit/delete without
+affecting the original — but reuses the exact same files in R2. Nothing
+gets re-uploaded, so this costs no extra storage. The only place bytes
+actually get duplicated is each physical TV's own local offline cache
+(Phase 5), which is unavoidable either way.
+
+This required a correctness fix alongside it: deleting a media item, or
+deleting a whole screen, now checks whether any *other* media row still
+references the same R2 file before actually deleting it from storage.
+
+### How to test
+
+1. Set up a screen with 2-3 media items, some with expiration dates set.
+2. Click "Duplicate to a new screen," confirm it redirects to a new
+   screen with all the same media, order, durations, and expirations —
+   plus its own fresh, unused pairing code.
+3. Edit an item's expiration on the *new* screen, then confirm the
+   *original* screen's copy is unaffected.
+4. Delete an item from the new screen only. Check R2 — the file should
+   still be there (the original screen's copy still references it).
+5. Delete that same item from the original screen too. Only now should
+   the R2 file actually disappear.
+
+Run `npm run typecheck && npm run lint && npm run build`.
 
 Every core product requirement from the spec has a real, tested
 implementation: accounts and screens, pairing without admin credentials on
@@ -607,5 +644,5 @@ both server- and client-side, offline-first playback that survives a
 dropped connection, wake lock/fullscreen for unattended TV use, a
 dashboard that gives honest, real-time feedback instead of silently
 failing, minimal owner/contributor screen sharing, and full screen
-lifecycle management (create, rename, disconnect, delete). It's deployed
-and running live on Vercel.
+lifecycle management (create, rename, duplicate, disconnect, delete). It's
+deployed and running live on Vercel.

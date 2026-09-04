@@ -8,6 +8,10 @@ export const renameScreenSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
 });
 
+export const duplicateScreenSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+});
+
 export const pairScreenSchema = z.object({
   pairingCode: z.string().trim().min(6).max(10),
 });
