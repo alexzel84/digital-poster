@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressAutocompleteInput } from "@/components/dashboard/address-autocomplete-input";
 
 export function CreateScreenForm() {
   const router = useRouter();
@@ -57,10 +58,10 @@ export function CreateScreenForm() {
         onChange={(e) => setName(e.target.value)}
         className="h-11 w-64"
       />
-      <Input
-        placeholder="Address (optional)"
+      <AddressAutocompleteInput
         value={address}
-        onChange={(e) => setAddress(e.target.value)}
+        onChange={setAddress}
+        placeholder="Address (optional)"
         className="h-11 w-64"
       />
       <Input

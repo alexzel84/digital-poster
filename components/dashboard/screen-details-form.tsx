@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AddressAutocompleteInput } from "@/components/dashboard/address-autocomplete-input";
 
 export function ScreenDetailsForm({
   screenId,
@@ -68,9 +69,9 @@ export function ScreenDetailsForm({
         placeholder="Type of business, e.g. Yoga studio"
         className="w-64 rounded border border-border px-2 py-1 text-sm"
       />
-      <input
+      <AddressAutocompleteInput
         value={address}
-        onChange={(e) => setAddress(e.target.value)}
+        onChange={setAddress}
         placeholder="Address"
         className="w-64 rounded border border-border px-2 py-1 text-sm"
       />

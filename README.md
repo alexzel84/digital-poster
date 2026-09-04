@@ -757,3 +757,136 @@ a version that also captures consent timestamp at signup.
    `terms_accepted_at`, not null.
 
 Run `npm run typecheck && npm run lint && npm run build`.
+
+## Forgot password
+
+Standard Supabase Auth password recovery — no new database columns, no
+new Supabase redirect URL needed (it reuses the existing `/auth/callback`
+route with a different `?next=` value, same trick as the invite flow).
+
+### What's new
+
+- "Forgot password?" link next to the password field on `/login`.
+- `/forgot-password` — enter your email, get a reset link. Shows the same
+  message whether or not the email has an account, so it doesn't leak
+  which emails are registered.
+- `/reset-password` — where the emailed link lands (via `/auth/callback`
+  exchanging the code for a temporary recovery session first). Set a new
+  password here. If someone reaches this page without a valid recovery
+  session (e.g. an expired or reused link), it shows an explicit "this
+  link is invalid or expired" message with a link back to
+  `/forgot-password`, rather than a confusing broken form.
+
+### How to test
+
+1. Go to `/login`, click "Forgot password?"
+2. Enter a real test account's email, submit. Confirm you see the "check
+   your inbox" message.
+3. Check your email (or Supabase's Auth logs if using a test project
+   without real email delivery configured) for the reset link. Click it.
+4. Confirm you land on `/reset-password` with an actual form, not the
+   "invalid link" message.
+5. Set a new password, confirm it redirects you straight to `/dashboard`
+   already logged in.
+6. Log out, log back in with the NEW password to confirm it actually
+   took effect.
+7. Visit `/reset-password` directly without ever clicking a real link —
+   confirm it shows the "invalid or expired" message instead of a broken
+   form.
+
+Run `npm run typecheck && npm run lint && npm run build`.
+
+## Address autocomplete (Google Places)
+
+Optional — the address field works as a plain text input either way.
+When a Google Maps API key is configured, typing in the address field
+shows real address suggestions instead.
+
+### Setup
+
+1. In Google Cloud Console, for the project tied to your API key, make
+   sure both **"Maps JavaScript API"** and **"Places API"** are enabled
+   (Google Cloud > APIs & Services > Library — search and enable each).
+   A key without these enabled will fail silently (falls back to a plain
+   input, per the design below) rather than erroring visibly.
+2. **Restrict the key** (Google Cloud > APIs & Services > Credentials >
+   your key > Application restrictions): set it to "Websites" and add
+   `http://localhost:3000/*` and your production domain
+   (`https://your-app.vercel.app/*` or your custom domain). This key is
+   used client-side (it has to be, for the autocomplete widget to run in
+   the browser), so this restriction is what actually keeps it from
+   being usable by anyone who happens to see it in your page source.
+3. Add it locally: `.env` → `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-key`.
+4. Add it in Vercel: Settings > Environment Variables > new variable,
+   name `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Since it starts with
+   `NEXT_PUBLIC_`, Vercel will ask Secret vs Config — same as the
+   Supabase public variables, choose **Config** (it's meant to be public;
+   the URL-restriction from step 2 is the actual security boundary, not
+   secrecy).
+5. Restart `npm run dev` locally / redeploy on Vercel.
+
+### Design note — this fails soft, on purpose
+
+`lib/screen/load-google-maps.ts` and
+`components/dashboard/address-autocomplete-input.tsx` are the only two
+files that know about Google Maps. If the key is missing, not yet
+configured, or Google's script fails to load for any reason, the address
+field just silently behaves like a normal text input — it never blocks
+screen creation or shows an error. This matches the spec's own guidance
+on isolating external integrations behind an adapter with a working
+fallback.
+
+### How to test
+
+1. With the key configured, start creating a screen and type a few
+   characters into the Address field — confirm a dropdown of real address
+   suggestions appears, and selecting one fills in the full formatted
+   address.
+2. Same test on the "Add address / business type" editor on an existing
+   screen's detail page.
+3. Temporarily remove/comment out `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` from
+   `.env`, restart the dev server, and confirm the address field still
+   works fine as a plain text input with no errors in the console.
+
+Run `npm install` (to pull in `@types/google.maps`), then
+`npm run typecheck && npm run lint && npm run build`.
+
+## Fix: startup could hang forever on some commercial-display browsers
+
+Real hardware testing on a Samsung QM32C (a commercial signage display)
+found that both the manual "Start" button and the 2-second auto-start
+fallback got stuck on the black start screen indefinitely — playback
+never began at all, even after a full power cycle ruled out caching.
+
+**Root cause:** `handleStart()` does `await enterFullscreen()` then
+`await wakeLockRef.current.request()`. Both of those already had
+try/catch around them — but a try/catch only helps if the underlying
+promise actually rejects. Some embedded/commercial-display browsers have
+incomplete Fullscreen API and/or Wake Lock API implementations where the
+returned promise never resolves OR rejects — it just hangs forever. An
+`await` on a promise that never settles blocks forever, which meant
+playback could never start on that hardware, regardless of how it was
+triggered.
+
+**Fix:** both `lib/screen/fullscreen.ts` and `player/WakeLockManager.ts`
+now race the actual browser API call against a 1.5s timeout. If the API
+hasn't settled by then, it's treated as a failure (logged, not fatal) and
+execution moves on immediately. Fullscreen and wake lock remain
+best-effort nice-to-haves; this just guarantees neither can block
+playback from starting, no matter how badly a given browser implements
+either API.
+
+### How to test
+
+Hard to fully simulate the exact hang on a normal browser, but at
+minimum:
+1. Run the existing test suites (`npm test`) — confirm
+   `wake-lock-manager.test.ts` still passes (it exercises the
+   unsupported-API path, which is unaffected by this change).
+2. Manually retest Start/auto-start on a regular browser and TV — confirm
+   no regression, still starts promptly.
+3. **Most importantly**: retest on the actual Samsung QM32C. This is the
+   one environment where the original bug was reproducible, so it's the
+   real confirmation this fix works.
+
+Run `npm run typecheck && npm run lint && npm run build && npm test`.
