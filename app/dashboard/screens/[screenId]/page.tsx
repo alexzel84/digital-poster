@@ -94,56 +94,58 @@ export default async function ScreenDetailPage({
         <Link href="/dashboard" className="text-sm text-muted-foreground underline">
           ← All screens
         </Link>
-        <div className="mt-2 flex items-start justify-between gap-4">
-          <div>
-            {isOwner ? (
-              <RenameScreenForm screenId={screen.id} initialName={screen.name} />
-            ) : (
-              <h1 className="text-xl font-semibold tracking-tight">{screen.name}</h1>
-            )}
-            {!isOwner && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                You&apos;re a contributor on this screen
+
+        <div className="mt-2">
+          {isOwner ? (
+            <RenameScreenForm screenId={screen.id} initialName={screen.name} />
+          ) : (
+            <h1 className="text-xl font-semibold tracking-tight">{screen.name}</h1>
+          )}
+          {!isOwner && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              You&apos;re a contributor on this screen
+            </p>
+          )}
+          {isOwner &&
+            (isPaired ? (
+              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+                <span>{online ? "🟢" : "⚪️"}</span>
+                <span>{online ? "Online" : "Offline"}</span>
+                <span className="text-muted-foreground/50">·</span>
+                <span>Last seen {formatLastSeen(screen.lastSeenAt)}</span>
               </p>
-            )}
-            {isOwner &&
-              (isPaired ? (
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <span>{online ? "🟢" : "⚪️"}</span>
-                  <span>{online ? "Online" : "Offline"}</span>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span>Last seen {formatLastSeen(screen.lastSeenAt)}</span>
-                </p>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Not paired — enter code <CopyCodeButton code={screen.pairingCode} /> on the TV
-                </p>
-              ))}
-            {isOwner ? (
-              <ScreenDetailsForm
-                screenId={screen.id}
-                initialAddress={screen.address}
-                initialBusinessType={screen.businessType}
-              />
             ) : (
-              (screen.address || screen.businessType) && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {[screen.businessType, screen.address].filter(Boolean).join(" · ")}
-                </p>
-              )
-            )}
-          </div>
-          {isOwner && (
-            <div className="flex flex-col items-end gap-2">
-              <div className="flex gap-2">
-                <ShareScreenButton screenId={screen.id} />
-                {isPaired && <DisconnectScreenButton screenId={screen.id} />}
-              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Not paired — enter code <CopyCodeButton code={screen.pairingCode} /> on the TV
+              </p>
+            ))}
+          {isOwner ? (
+            <ScreenDetailsForm
+              screenId={screen.id}
+              initialAddress={screen.address}
+              initialBusinessType={screen.businessType}
+            />
+          ) : (
+            (screen.address || screen.businessType) && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {[screen.businessType, screen.address].filter(Boolean).join(" · ")}
+              </p>
+            )
+          )}
+        </div>
+
+        {isOwner && (
+          <div className="mt-4 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <ShareScreenButton screenId={screen.id} />
+              {isPaired && <DisconnectScreenButton screenId={screen.id} />}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <DuplicateScreenButton screenId={screen.id} screenName={screen.name} />
               <DeleteScreenButton screenId={screen.id} screenName={screen.name} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <UploadMedia screenId={screen.id} />
