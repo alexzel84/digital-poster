@@ -25,11 +25,7 @@ export function ScreenApp() {
   }
 
   if (state.status === "pairing") {
-    return (
-      <PairingForm
-        onPaired={(auth) => setState({ status: "paired", auth })}
-      />
-    );
+    return <PairingForm />;
   }
 
   return (

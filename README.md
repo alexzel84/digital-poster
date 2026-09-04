@@ -890,3 +890,27 @@ minimum:
    real confirmation this fix works.
 
 Run `npm run typecheck && npm run lint && npm run build && npm test`.
+
+## Fix: pairing required a manual refresh on some TVs
+
+After the fullscreen/wake-lock hang fix above, pairing worked and
+playback started — but only after manually refreshing the page. The
+in-session React transition from the pairing screen straight to the
+Player component worked unreliably on the same commercial-display
+hardware; a genuine fresh page load worked every time.
+
+**Fix:** rather than root-causing the exact browser quirk, `PairingForm`
+now calls `window.location.reload()` immediately after a successful pair
+(the token is already saved to `localStorage` by then), so the app lands
+back in the Player via a completely fresh page load automatically — no
+one needs to be physically at the TV to press refresh.
+
+### How to test
+
+1. Pair a fresh screen on a regular browser — confirm it still reloads
+   and starts playing smoothly, no regression.
+2. Retest the full pairing flow on the actual Samsung QM32C — confirm it
+   now plays automatically right after entering the code, with no manual
+   refresh needed.
+
+Run `npm run typecheck && npm run lint && npm run build`.

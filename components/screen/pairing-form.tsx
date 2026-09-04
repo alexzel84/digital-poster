@@ -4,11 +4,7 @@ import { useState } from "react";
 import { setScreenAuth, type ScreenAuth } from "@/lib/screen/local-auth";
 import { normalizePairingCode } from "@/lib/screen/pairing-code";
 
-export function PairingForm({
-  onPaired,
-}: {
-  onPaired: (auth: ScreenAuth) => void;
-}) {
+export function PairingForm() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +35,17 @@ export function PairingForm({
         screenToken: data.screenToken,
       };
       setScreenAuth(auth);
-      onPaired(auth);
+
+      // A full reload here (rather than a React state transition to the
+      // Player component) is deliberate: some embedded/commercial-display
+      // browsers behave unreliably when swapping between components
+      // within the same page session — media/fullscreen/wake-lock APIs
+      // that work fine on a fresh page load can misbehave after a
+      // same-session transition. Since the token is already saved to
+      // localStorage above, a reload lands straight back in the Player
+      // via ScreenApp's normal startup check, with no manual action
+      // needed from anyone physically at the TV.
+      window.location.reload();
     } catch {
       setError("Couldn't reach the server. Check your connection.");
       setLoading(false);
