@@ -50,7 +50,7 @@ export function PairingForm({
     <div className="flex h-full w-full flex-col items-center justify-center gap-8 bg-black px-6 text-white">
       <div className="text-center">
         <p className="text-sm font-medium tracking-[0.3em] text-white/50">
-          DIGITAL POSTER
+          POSTERDECK
         </p>
         <h1 className="mt-3 text-3xl font-light">Connect this screen</h1>
         <p className="mt-2 text-white/60">Enter the code shown in your dashboard</p>

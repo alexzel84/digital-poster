@@ -3,7 +3,7 @@ export default function KeepTvAwakePage() {
     <div className="mx-auto max-w-xl px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Keep your TV awake</h1>
       <p className="mt-3 text-muted-foreground">
-        Digital Poster tries to keep your TV&apos;s screen from sleeping
+        PosterDeck tries to keep your TV&apos;s screen from sleeping
         automatically using your browser&apos;s wake lock feature, but not
         every TV browser supports this. For reliable 24/7 display, also
         disable your TV&apos;s own sleep, screensaver, and auto-power-off

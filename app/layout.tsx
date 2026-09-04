@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Digital Poster",
+  title: "PosterDeck",
   description: "Turn any TV into a digital poster.",
 };
 

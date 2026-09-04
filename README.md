@@ -1,4 +1,12 @@
-# Digital Poster — Phase 1
+# PosterDeck (formerly "Digital Poster") — Phase 1
+
+> **Renamed from "Digital Poster" to "PosterDeck."** All user-facing text
+> (site title, dashboard header, TV pairing screen, help page, legal
+> pages) uses the new name. Internal-only identifiers — the npm package
+> name, localStorage/IndexedDB/Cache Storage keys — were deliberately
+> left as `digital-poster` to avoid invalidating already-paired TVs'
+> local storage; renaming those has no user-visible effect and isn't
+> worth the churn.
 
 Turn a TV into a continuously playing digital poster. This is Phase 1 of a
 7-phase MVP build: project setup, database schema, authentication, and a
@@ -688,3 +696,64 @@ failing, minimal owner/contributor screen sharing, full screen
 lifecycle management (create, rename, duplicate, disconnect, delete), and
 per-screen address/business-type metadata. It's deployed and running
 live on Vercel.
+
+## Privacy Policy, Terms of Service, and signup consent
+
+**This is not legal advice, and neither are the pages this adds** — see
+the important caveat at the end of this section.
+
+### What this adds
+
+- `/privacy` and `/terms` — plain pages describing what the app actually
+  does with data today (Supabase for auth/DB, Cloudflare R2 for files,
+  Vercel for hosting; no ads, no analytics, no selling data) and basic
+  terms of use. Both have `[PLACEHOLDER]` values (company name, contact
+  email, governing law, last-updated date) you need to fill in, and both
+  have a visible banner marking them as a starting template.
+- Signup now has a **required** checkbox — "I agree to the Terms of
+  Service and Privacy Policy" — linking to both pages. The submit button
+  is disabled until it's checked.
+- The exact moment of consent is recorded: a new `terms_accepted_at`
+  column on the `users` table, populated via Supabase's signup metadata
+  and a small update to the existing signup trigger — this works whether
+  or not email confirmation is required, since it's captured immediately
+  at signup rather than needing a later authenticated API call.
+
+### Setup — needs a fresh migration
+
+```sql
+alter table users add column if not exists terms_accepted_at timestamptz;
+```
+Then also run the updated trigger function from
+`db/migrations/0004_terms_consent.sql` in the Supabase SQL editor — it
+replaces the `handle_new_user` trigger from `0001_rls_policies.sql` with
+a version that also captures consent timestamp at signup.
+
+### Before this is real
+
+- **Fill in every `[PLACEHOLDER]`** in both pages — company/entity name,
+  a real contact email, your actual jurisdiction, and a real "last
+  updated" date.
+- **Have someone with legal expertise review both pages** before relying
+  on them for actual customers, especially if you'll have users in the
+  EU (GDPR), California (CCPA/CPRA), or other regions with their own
+  requirements — those have specific rules about what a valid privacy
+  policy and consent flow need to include that go beyond what's written
+  here.
+- This covers the *signup* consent flow. It does not implement things
+  like a full account-deletion self-service flow, a cookie-consent
+  banner (not currently needed since only an essential auth cookie is
+  used, but worth re-checking if that changes), or data export — add
+  those if/when you determine you need them.
+
+### How to test
+
+1. Go to `/signup`. Confirm the "Create account" button is disabled until
+   you check the consent checkbox.
+2. Click the Terms/Privacy links — confirm they open the actual pages in
+   a new tab.
+3. Complete signup with the box checked. In Supabase's Table Editor,
+   check the `users` table — confirm the new row has a real timestamp in
+   `terms_accepted_at`, not null.
+
+Run `npm run typecheck && npm run lint && npm run build`.

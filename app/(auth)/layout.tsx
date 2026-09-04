@@ -8,7 +8,7 @@ export default function AuthLayout({
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Digital Poster
+            PosterDeck
           </h1>
         </div>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">

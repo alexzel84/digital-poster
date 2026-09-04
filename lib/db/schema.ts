@@ -20,6 +20,7 @@ export const mediaTypeEnum = pgEnum("media_type", ["image", "video"]);
 export const users = pgTable("users", {
   id: uuid("id").primaryKey(), // same id as auth.users.id
   email: text("email").notNull(),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -21,7 +21,7 @@ export default async function DashboardLayout({
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <span className="text-sm font-semibold tracking-tight">
-            Digital Poster
+            PosterDeck
           </span>
           <SignOutButton />
         </div>
