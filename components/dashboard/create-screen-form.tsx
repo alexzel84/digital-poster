@@ -9,6 +9,8 @@ export function CreateScreenForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [businessType, setBusinessType] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +22,11 @@ export function CreateScreenForm() {
     const res = await fetch("/api/screens", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        address: address.trim() || undefined,
+        businessType: businessType.trim() || undefined,
+      }),
     });
 
     setLoading(false);
@@ -32,6 +38,8 @@ export function CreateScreenForm() {
     }
 
     setName("");
+    setAddress("");
+    setBusinessType("");
     setOpen(false);
     router.refresh();
   }
@@ -41,25 +49,39 @@ export function CreateScreenForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col items-end gap-2">
       <Input
         autoFocus
-        placeholder="e.g. MAINWOOD Lobby"
+        placeholder="Screen name, e.g. MAINWOOD Lobby"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="h-11 w-56"
+        className="h-11 w-64"
       />
-      <Button type="submit" size="sm" disabled={loading || !name.trim()}>
-        {loading ? "Creating…" : "Create"}
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpen(false)}
-      >
-        Cancel
-      </Button>
+      <Input
+        placeholder="Address (optional)"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        className="h-11 w-64"
+      />
+      <Input
+        placeholder="Type of business (optional), e.g. Yoga studio"
+        value={businessType}
+        onChange={(e) => setBusinessType(e.target.value)}
+        className="h-11 w-64"
+      />
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={loading || !name.trim()}>
+          {loading ? "Creating…" : "Create"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpen(false)}
+        >
+          Cancel
+        </Button>
+      </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </form>
   );

@@ -31,6 +31,8 @@ export const screens = pgTable("screens", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  address: text("address"),
+  businessType: text("business_type"),
   pairingCode: text("pairing_code").notNull(),
   pairingCodeExpiresAt: timestamp("pairing_code_expires_at", {
     withTimezone: true,

@@ -74,6 +74,11 @@ export default async function DashboardPage() {
                       >
                         {screen.name}
                       </Link>
+                      {(screen.businessType || screen.address) && (
+                        <p className="mt-0.5 text-xs text-muted-foreground/70">
+                          {[screen.businessType, screen.address].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
 
                       {isPaired ? (
                         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">

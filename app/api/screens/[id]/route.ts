@@ -3,7 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { screens, media, screenMedia } from "@/lib/db/schema";
-import { renameScreenSchema } from "@/lib/validation/screen";
+import { updateScreenSchema } from "@/lib/validation/screen";
 import { deleteObject } from "@/lib/storage/r2";
 
 export async function PATCH(
@@ -21,7 +21,7 @@ export async function PATCH(
   }
 
   const body = await request.json().catch(() => null);
-  const parsed = renameScreenSchema.safeParse(body);
+  const parsed = updateScreenSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -30,10 +30,15 @@ export async function PATCH(
     );
   }
 
-  // Owner only — renaming is not a contributor privilege.
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+  if ("address" in parsed.data) updates.address = parsed.data.address || null;
+  if ("businessType" in parsed.data) updates.businessType = parsed.data.businessType || null;
+
+  // Owner only — editing screen details is not a contributor privilege.
   const [updated] = await db
     .update(screens)
-    .set({ name: parsed.data.name, updatedAt: new Date() })
+    .set(updates)
     .where(and(eq(screens.id, id), eq(screens.userId, user.id)))
     .returning({ id: screens.id });
 

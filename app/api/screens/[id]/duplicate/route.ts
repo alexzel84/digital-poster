@@ -71,6 +71,8 @@ export async function POST(
       .values({
         userId: user.id,
         name: parsed.data.name ?? `${sourceScreen.name} (Copy)`,
+        address: sourceScreen.address,
+        businessType: sourceScreen.businessType,
         pairingCode: generatePairingCode(),
         pairingCodeExpiresAt: pairingCodeExpiresAt(),
         manifestVersion: 0,

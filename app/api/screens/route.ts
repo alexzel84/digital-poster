@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     .values({
       userId: user.id, // ownership derived from the authenticated session, never from the client
       name: parsed.data.name,
+      address: parsed.data.address || null,
+      businessType: parsed.data.businessType || null,
       pairingCode: generatePairingCode(),
       pairingCodeExpiresAt: pairingCodeExpiresAt(),
       manifestVersion: 0,

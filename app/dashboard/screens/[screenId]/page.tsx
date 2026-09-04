@@ -16,6 +16,7 @@ import { CollaboratorsList } from "@/components/dashboard/collaborators-list";
 import { RenameScreenForm } from "@/components/dashboard/rename-screen-form";
 import { DeleteScreenButton } from "@/components/dashboard/delete-screen-button";
 import { DuplicateScreenButton } from "@/components/dashboard/duplicate-screen-button";
+import { ScreenDetailsForm } from "@/components/dashboard/screen-details-form";
 
 export default async function ScreenDetailPage({
   params,
@@ -118,6 +119,19 @@ export default async function ScreenDetailPage({
                   Not paired — enter code <CopyCodeButton code={screen.pairingCode} /> on the TV
                 </p>
               ))}
+            {isOwner ? (
+              <ScreenDetailsForm
+                screenId={screen.id}
+                initialAddress={screen.address}
+                initialBusinessType={screen.businessType}
+              />
+            ) : (
+              (screen.address || screen.businessType) && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {[screen.businessType, screen.address].filter(Boolean).join(" · ")}
+                </p>
+              )
+            )}
           </div>
           {isOwner && (
             <div className="flex flex-col items-end gap-2">

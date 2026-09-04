@@ -637,12 +637,54 @@ references the same R2 file before actually deleting it from storage.
 
 Run `npm run typecheck && npm run lint && npm run build`.
 
+## Screen address and business type
+
+Two optional fields on each screen (not the user account, since one
+owner can have screens at different locations/businesses): address and
+type of business, both free text.
+
+### Setup — needs a fresh migration
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+No RLS changes needed — these are just two new nullable columns on the
+existing `screens` table, already covered by the existing policies.
+
+### Where to find it
+
+- **On creation**: the "Connect a screen" form now has two more optional
+  fields under the name.
+- **On an existing screen**: click the small "Add address / business
+  type" text under a screen's name/status on its detail page (owner
+  only) to add or edit them later.
+- Shown as a subtitle under the screen name on the main dashboard list
+  too, when filled in.
+- **Duplicating a screen** carries these over automatically, since a
+  duplicate is usually for the same physical location.
+
+### How to test
+
+1. Create a new screen, fill in both fields, confirm they show up on the
+   dashboard list and the screen's detail page.
+2. Create another screen leaving both blank — confirm nothing broken,
+   just shows "Add address / business type" as a prompt instead.
+3. Click that prompt on the blank one, fill it in, save, confirm it
+   updates immediately.
+4. As a contributor (not owner) on a shared screen, confirm you see the
+   address/business type as plain read-only text (if set) with no way to
+   edit it.
+
+Run `npm run typecheck && npm run lint && npm run build`.
+
 Every core product requirement from the spec has a real, tested
 implementation: accounts and screens, pairing without admin credentials on
 the TV, direct-to-R2 uploads with no publish step, expiration enforced
 both server- and client-side, offline-first playback that survives a
 dropped connection, wake lock/fullscreen for unattended TV use, a
 dashboard that gives honest, real-time feedback instead of silently
-failing, minimal owner/contributor screen sharing, and full screen
-lifecycle management (create, rename, duplicate, disconnect, delete). It's
-deployed and running live on Vercel.
+failing, minimal owner/contributor screen sharing, full screen
+lifecycle management (create, rename, duplicate, disconnect, delete), and
+per-screen address/business-type metadata. It's deployed and running
+live on Vercel.
