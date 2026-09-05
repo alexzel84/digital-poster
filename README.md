@@ -1073,3 +1073,57 @@ you'd rather have it daily or more/less frequent.
 3. Change the constant back to `6 * 60 * 60 * 1000` before deploying.
 
 Run `npm run typecheck && npm run lint && npm run build`.
+
+## Founder dashboard (`/admin`)
+
+Internal-only — for you, not your customers. Restricted by email, not a
+database flag, so there's no "isAdmin" column that could ever leak via an
+API response by mistake.
+
+### What's in it
+
+- Total users, total screens (with paired count), total media items,
+  total storage used across R2.
+- Two 30-day bar charts: signups per day, screens created per day. No new
+  charting library added — just CSS divs, since this is one internal page
+  and didn't seem worth a new dependency for.
+- A browsable list of every user (email, joined date, screens owned) and
+  every screen (name, owner, paired status, media count, created date),
+  capped at the 200 most recent of each for now — add pagination later if
+  you ever have more than that.
+
+### Setup
+
+1. In `.env`, set `ADMIN_EMAILS=your-actual-email@example.com` (comma-
+   separate multiple emails if you ever add a co-founder). This must NOT
+   have the `NEXT_PUBLIC_` prefix — it's server-only, never sent to the
+   browser.
+2. Add the same variable in Vercel's environment variables for production.
+3. Restart `npm run dev` / redeploy after adding it.
+
+### How to test
+
+1. Visit `/admin` while logged in as an account whose email is NOT in
+   `ADMIN_EMAILS` — confirm you get a normal 404 page, not an error or a
+   "no permission" message (this is deliberate — it shouldn't even hint
+   that an admin panel exists).
+2. Log in as the email you DID put in `ADMIN_EMAILS`, visit `/admin` —
+   confirm you see real numbers matching what's actually in your database
+   (cross-check the user/screen counts against Supabase's Table Editor).
+3. Confirm the two charts show actual bars for days you know you created
+   test accounts/screens on, and zero-height (not missing) bars for days
+   with no activity.
+
+### Known limitation worth flagging honestly
+
+The two list queries (`userList`, `screenList`) use a raw SQL correlated
+subquery — interpolating a Drizzle table object directly inside a
+`sql\`...\`` template — to count each user's screens / each screen's
+media inline. This is documented, supported Drizzle syntax, but it's the
+most complex raw SQL in the whole codebase and hasn't been tested against
+a live database from this sandbox. If `npm run typecheck` or `npm run
+build` surface anything here, or the counts look wrong once you check
+`/admin` for real, tell me the exact error/output and I'll fix it —
+don't assume it's silently correct just because it type-checks.
+
+Run `npm run typecheck && npm run lint && npm run build && npm test`.
