@@ -66,6 +66,8 @@ export default async function AdminPage() {
       isPaired: sql<boolean>`${screens.screenTokenHash} is not null`,
       createdAt: screens.createdAt,
       mediaCount: sql<number>`(select count(*) from ${screenMedia} where ${screenMedia.screenId} = ${screens.id})::int`,
+      address: screens.address,
+      businessType: screens.businessType,
     })
     .from(screens)
     .innerJoin(users, eq(users.id, screens.userId))
@@ -127,6 +129,8 @@ export default async function AdminPage() {
               <tr>
                 <th className="p-3">Name</th>
                 <th className="p-3">Owner</th>
+                <th className="p-3">Business type</th>
+                <th className="p-3">Address</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Media</th>
                 <th className="p-3">Created</th>
@@ -137,6 +141,8 @@ export default async function AdminPage() {
                 <tr key={s.id} className="border-b border-border last:border-0">
                   <td className="p-3">{s.name}</td>
                   <td className="p-3 text-muted-foreground">{s.ownerEmail}</td>
+                  <td className="p-3 text-muted-foreground">{s.businessType ?? "—"}</td>
+                  <td className="p-3 text-muted-foreground">{s.address ?? "—"}</td>
                   <td className="p-3">{s.isPaired ? "🟢 Paired" : "⚪️ Unpaired"}</td>
                   <td className="p-3">{s.mediaCount}</td>
                   <td className="p-3 text-muted-foreground">
