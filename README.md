@@ -914,3 +914,34 @@ one needs to be physically at the TV to press refresh.
    refresh needed.
 
 Run `npm run typecheck && npm run lint && npm run build`.
+
+## Change password (while logged in)
+
+A proper in-app option, separate from the "forgot password" flow — no
+email round-trip needed since the user's already authenticated.
+
+### What's new
+
+- A "Settings" link in the dashboard header, next to Sign out.
+- `/dashboard/settings` — currently just the password change form, with
+  room to grow later if more account settings get added.
+- The form re-verifies the current password (via a real
+  `signInWithPassword` call) before allowing the change — this is what
+  makes "current password" a real check rather than a cosmetic one,
+  since `updateUser()` alone would work for anyone with an active
+  session regardless of whether they actually know the current password.
+
+### How to test
+
+1. Log in, click "Settings" in the header.
+2. Try changing the password with a WRONG current password — confirm you
+   get "Current password is incorrect," and nothing changes.
+3. Change it with the correct current password and a new one — confirm
+   the success message appears.
+4. Log out, log back in with the NEW password to confirm it actually
+   took effect.
+5. Try a new password under 8 characters, or one that doesn't match the
+   confirmation field — confirm both show a clear inline error before
+   ever hitting the server.
+
+Run `npm run typecheck && npm run lint && npm run build`.
