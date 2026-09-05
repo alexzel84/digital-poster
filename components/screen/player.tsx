@@ -14,6 +14,15 @@ import { StartScreen } from "@/components/screen/start-screen";
 
 const LOCAL_EXPIRY_CHECK_MS = 30_000;
 
+// Digital-signage best practice: a browser left running unattended for
+// days can accumulate memory leaks or drift into odd states over very
+// long uptimes. A periodic full reload is a cheap, standard way to
+// self-heal from that. This is NOT a fix for a TV's own firmware-level
+// auto-power-off (that only responds to real remote input and can't be
+// influenced from a webpage at all — see /help/keep-tv-awake for the
+// actual fix for that). This is purely a reliability safeguard.
+const PERIODIC_RELOAD_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 export function Player({
   screenId,
   screenToken,
@@ -117,6 +126,15 @@ export function Player({
       setCurrentItem(engine.currentItem);
     }, LOCAL_EXPIRY_CHECK_MS);
     return () => clearInterval(interval);
+  }, []);
+
+  // Periodic full reload — reliability safeguard, not a power-management
+  // feature. See the constant's comment above for why this exists.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.location.reload();
+    }, PERIODIC_RELOAD_MS);
+    return () => clearTimeout(timer);
   }, []);
 
   // Image auto-advance timer

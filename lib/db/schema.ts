@@ -63,6 +63,14 @@ export const media = pgTable("media", {
   durationSeconds: integer("duration_seconds"), // natural video duration, null for images
   imageDurationSeconds: integer("image_duration_seconds").default(8), // configurable, images only
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  // Tracks duplication lineage: when a screen is duplicated, each new
+  // media row points back at the ORIGINAL row it was cloned from (never
+  // chained — duplicating a duplicate still points at the same root).
+  // Used only to prevent "also show on" from linking two family members
+  // onto the same screen (which would show the same content twice).
+  // Never used for playback/ownership logic. Set null if the root is
+  // ever deleted — siblings just become untracked independent items.
+  clonedFromId: uuid("cloned_from_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

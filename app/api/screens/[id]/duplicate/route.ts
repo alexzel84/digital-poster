@@ -14,6 +14,12 @@ import { generatePairingCode, pairingCodeExpiresAt } from "@/lib/screen/pairing-
  * file in R2 is never re-uploaded or duplicated, so this costs no extra
  * storage. See media DELETE and screen DELETE for the matching logic that
  * only removes an R2 object once no media row references it anymore.
+ *
+ * Each new row also records `clonedFromId`, pointing at the root of its
+ * duplication family. This is used only by the screen detail page to
+ * prevent "also show on" from linking a sibling duplicate onto a screen
+ * that already has a family member — which would otherwise show the same
+ * content twice. It never affects playback, ownership, or deletion.
  */
 export async function POST(
   request: Request,
@@ -58,6 +64,7 @@ export async function POST(
       durationSeconds: media.durationSeconds,
       imageDurationSeconds: media.imageDurationSeconds,
       expiresAt: media.expiresAt,
+      clonedFromId: media.clonedFromId,
       sortOrder: screenMedia.sortOrder,
     })
     .from(screenMedia)
@@ -94,6 +101,11 @@ export async function POST(
         durationSeconds: item.durationSeconds,
         imageDurationSeconds: item.imageDurationSeconds,
         expiresAt: item.expiresAt,
+        // Point at the ROOT of the family, never chained — duplicating an
+        // already-duplicated item still points at the same original, so
+        // "which screens share this content" stays a flat lookup rather
+        // than requiring recursive traversal.
+        clonedFromId: item.clonedFromId ?? item.mediaId,
       });
 
       await tx.insert(screenMedia).values({

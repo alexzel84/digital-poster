@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { media, screenMedia, screens } from "@/lib/db/schema";
 import { updateMediaSchema } from "@/lib/validation/media";
-import { deleteObject } from "@/lib/storage/r2";
+import { canManageMedia } from "@/lib/media/access";
+import { deleteMediaCompletely } from "@/lib/media/delete-media";
 
 async function bumpManifestVersionsForMedia(mediaId: string) {
   const affectedScreens = await db
@@ -18,30 +19,6 @@ async function bumpManifestVersionsForMedia(mediaId: string) {
       .set({ manifestVersion: sql`${screens.manifestVersion} + 1`, updatedAt: new Date() })
       .where(eq(screens.id, screenId));
   }
-}
-
-/**
- * Can this user manage this media item? True if they uploaded it
- * themselves, OR if they own any screen the item is currently attached
- * to (an owner can manage a contributor's uploads on their own screen —
- * "not full control" for contributors, but full control for the owner).
- */
-async function canManageMedia(userId: string, mediaId: string): Promise<boolean> {
-  const [ownRow] = await db
-    .select({ id: media.id })
-    .from(media)
-    .where(and(eq(media.id, mediaId), eq(media.userId, userId)))
-    .limit(1);
-  if (ownRow) return true;
-
-  const [ownedScreenRow] = await db
-    .select({ screenId: screenMedia.screenId })
-    .from(screenMedia)
-    .innerJoin(screens, eq(screens.id, screenMedia.screenId))
-    .where(and(eq(screenMedia.mediaId, mediaId), eq(screens.userId, userId)))
-    .limit(1);
-
-  return Boolean(ownedScreenRow);
 }
 
 export async function PATCH(
@@ -104,52 +81,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Media not found" }, { status: 404 });
   }
 
-  const [existing] = await db
-    .select({ id: media.id, storageKey: media.storageKey })
-    .from(media)
-    .where(eq(media.id, id))
-    .limit(1);
-
-  if (!existing) {
-    return NextResponse.json({ error: "Media not found" }, { status: 404 });
-  }
-
-  // Capture affected screens before the cascade delete removes the join rows.
-  const affectedScreens = await db
-    .select({ screenId: screenMedia.screenId })
-    .from(screenMedia)
-    .where(eq(screenMedia.mediaId, id));
-
-  await db.delete(media).where(eq(media.id, id)); // screen_media rows cascade automatically
-
-  for (const { screenId } of affectedScreens) {
-    await db
-      .update(screens)
-      .set({ manifestVersion: sql`${screens.manifestVersion} + 1`, updatedAt: new Date() })
-      .where(eq(screens.id, screenId));
-  }
-
-  // Screen duplication (see /api/screens/:id/duplicate) creates new media
-  // rows that intentionally share a storageKey with an existing row —
-  // same underlying R2 file, so it isn't re-uploaded/duplicated in
-  // storage. That means deleting ONE of those rows must not delete the
-  // shared file out from under any row that still references it.
-  const [stillReferenced] = await db
-    .select({ id: media.id })
-    .from(media)
-    .where(and(eq(media.storageKey, existing.storageKey), ne(media.id, id)))
-    .limit(1);
-
-  if (!stillReferenced) {
-    try {
-      await deleteObject(existing.storageKey);
-    } catch (err) {
-      // The DB record is already gone — log and move on rather than
-      // leaving the user stuck with an item they can't delete because R2
-      // hiccuped.
-      console.error("[media DELETE] failed to delete R2 object", err);
-    }
-  }
+  await deleteMediaCompletely(id);
 
   return NextResponse.json({ ok: true });
 }

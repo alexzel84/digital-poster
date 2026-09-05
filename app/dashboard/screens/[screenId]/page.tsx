@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray, and, ne, or } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { screens, media, screenMedia, screenCollaborators, users } from "@/lib/db/schema";
@@ -49,6 +49,7 @@ export default async function ScreenDetailPage({
       durationSeconds: media.durationSeconds,
       imageDurationSeconds: media.imageDurationSeconds,
       expiresAt: media.expiresAt,
+      clonedFromId: media.clonedFromId,
       sortOrder: screenMedia.sortOrder,
       uploaderUserId: media.userId,
       uploaderEmail: users.email,
@@ -74,8 +75,90 @@ export default async function ScreenDetailPage({
         row.type === "image"
           ? await getDownloadUrl(row.storageKey).catch(() => null)
           : null,
+      linkedScreens: [] as { id: string; name: string }[], // filled in below
+      duplicateSiblingScreens: [] as { id: string; name: string }[], // filled in below
     }))
   );
+
+  // --- Duplication-family tracking ---
+  // A duplicated screen's items are independent rows that share a
+  // "clonedFromId" pointing at the same root. We need to know, for each
+  // item here, which OTHER screens hold a sibling from the same family —
+  // so "also show on" can exclude them (linking a sibling onto a screen
+  // that already has a family member would show the same content twice).
+  const rootIdByItemId = new Map<string, string>();
+  for (const row of rows) {
+    rootIdByItemId.set(row.id, row.clonedFromId ?? row.id);
+  }
+  const rootIds = [...new Set(rootIdByItemId.values())];
+
+  const familyMembers =
+    rootIds.length > 0
+      ? await db
+          .select({ id: media.id, clonedFromId: media.clonedFromId })
+          .from(media)
+          .where(
+            or(inArray(media.id, rootIds), inArray(media.clonedFromId, rootIds))
+          )
+      : [];
+
+  const membersByRootId = new Map<string, string[]>();
+  for (const member of familyMembers) {
+    const rootId = member.clonedFromId ?? member.id;
+    const list = membersByRootId.get(rootId) ?? [];
+    list.push(member.id);
+    membersByRootId.set(rootId, list);
+  }
+
+  // Every media id we need screen-attachment info for: this screen's own
+  // items, PLUS every duplication-family member (to find sibling screens).
+  const allFamilyMemberIds = [...new Set(familyMembers.map((m) => m.id))];
+  const mediaIds = [...new Set([...rows.map((r) => r.id), ...allFamilyMemberIds])];
+
+  const allLinks =
+    mediaIds.length > 0
+      ? await db
+          .select({
+            mediaId: screenMedia.mediaId,
+            screenId: screens.id,
+            screenName: screens.name,
+          })
+          .from(screenMedia)
+          .innerJoin(screens, eq(screens.id, screenMedia.screenId))
+          .where(inArray(screenMedia.mediaId, mediaIds))
+      : [];
+
+  const linksByMediaId = new Map<string, { id: string; name: string }[]>();
+  for (const link of allLinks) {
+    const list = linksByMediaId.get(link.mediaId) ?? [];
+    list.push({ id: link.screenId, name: link.screenName });
+    linksByMediaId.set(link.mediaId, list);
+  }
+
+  for (const item of items) {
+    item.linkedScreens = linksByMediaId.get(item.id) ?? [];
+
+    const rootId = rootIdByItemId.get(item.id)!;
+    const siblingIds = (membersByRootId.get(rootId) ?? []).filter((id) => id !== item.id);
+
+    const siblingScreensById = new Map<string, { id: string; name: string }>();
+    for (const siblingId of siblingIds) {
+      for (const screenLink of linksByMediaId.get(siblingId) ?? []) {
+        if (screenLink.id === screenId) continue; // this screen itself
+        if (item.linkedScreens.some((l) => l.id === screenLink.id)) continue; // already an exact link
+        siblingScreensById.set(screenLink.id, screenLink);
+      }
+    }
+    item.duplicateSiblingScreens = [...siblingScreensById.values()];
+  }
+
+  // Owner's other screens — offered as targets in "also show on..."
+  const otherScreens = isOwner
+    ? await db
+        .select({ id: screens.id, name: screens.name })
+        .from(screens)
+        .where(and(eq(screens.userId, user.id), ne(screens.id, screenId)))
+    : [];
 
   const collaborators = isOwner
     ? await db
@@ -154,6 +237,7 @@ export default async function ScreenDetailPage({
         initialItems={items}
         isOwner={isOwner}
         currentUserId={user.id}
+        otherScreens={otherScreens}
       />
 
       {isOwner && (

@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
+export interface LinkedScreen {
+  id: string;
+  name: string;
+}
+
 export interface MediaListItem {
   id: string;
   filename: string;
@@ -15,6 +20,8 @@ export interface MediaListItem {
   thumbnailUrl: string | null;
   uploaderUserId: string;
   uploaderEmail: string;
+  linkedScreens: LinkedScreen[]; // every screen this item is attached to, including the current one
+  duplicateSiblingScreens: LinkedScreen[]; // other screens with an independent duplicate of this same content
 }
 
 function statusFor(expiresAt: string | null): { label: string; className: string } {
@@ -30,11 +37,13 @@ export function MediaList({
   initialItems,
   isOwner,
   currentUserId,
+  otherScreens,
 }: {
   screenId: string;
   initialItems: MediaListItem[];
   isOwner: boolean;
   currentUserId: string;
+  otherScreens: LinkedScreen[];
 }) {
   const router = useRouter();
   const [items, setItems] = useState(
@@ -74,12 +83,19 @@ export function MediaList({
     persistOrder(next);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this media item? This can't be undone.")) return;
+  async function handleDelete(id: string, linkedScreens: LinkedScreen[]) {
+    const isOnlyScreen = linkedScreens.length <= 1;
+    const confirmMessage = isOnlyScreen
+      ? "Delete this media item? This can't be undone."
+      : `Remove this item from this screen? It's also on ${linkedScreens.length - 1} other screen(s), where it will stay — this only removes it here.`;
+    if (!confirm(confirmMessage)) return;
+
     setBusyId(id);
     setErrorId(null);
     try {
-      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/media/${id}/screens/${screenId}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         setErrorId(id);
         setBusyId(null);
@@ -151,6 +167,67 @@ export function MediaList({
     }
   }
 
+  async function handleLinkScreen(mediaId: string, targetScreenId: string) {
+    if (!targetScreenId) return;
+    setBusyId(mediaId);
+    setErrorId(null);
+    try {
+      const res = await fetch(`/api/media/${mediaId}/screens`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ screenId: targetScreenId }),
+      });
+      if (!res.ok) {
+        setErrorId(mediaId);
+        setBusyId(null);
+        return;
+      }
+      const target = otherScreens.find((s) => s.id === targetScreenId);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === mediaId && target
+            ? { ...item, linkedScreens: [...item.linkedScreens, target] }
+            : item
+        )
+      );
+      setBusyId(null);
+      router.refresh();
+    } catch {
+      setErrorId(mediaId);
+      setBusyId(null);
+    }
+  }
+
+  async function handleUnlinkScreen(mediaId: string, targetScreenId: string) {
+    setBusyId(mediaId);
+    setErrorId(null);
+    try {
+      const res = await fetch(`/api/media/${mediaId}/screens/${targetScreenId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        setErrorId(mediaId);
+        setBusyId(null);
+        return;
+      }
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === mediaId
+            ? {
+                ...item,
+                linkedScreens: item.linkedScreens.filter((s) => s.id !== targetScreenId),
+              }
+            : item
+        )
+      );
+      setBusyId(null);
+      router.refresh();
+    } catch {
+      setErrorId(mediaId);
+      setBusyId(null);
+    }
+  }
+
   if (items.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -164,6 +241,12 @@ export function MediaList({
       {items.map((item, index) => {
         const status = statusFor(item.expiresAt);
         const canManage = isOwner || item.uploaderUserId === currentUserId;
+        const otherLinkedScreens = item.linkedScreens.filter((s) => s.id !== screenId);
+        const linkableScreens = otherScreens.filter(
+          (s) =>
+            !item.linkedScreens.some((linked) => linked.id === s.id) &&
+            !item.duplicateSiblingScreens.some((sibling) => sibling.id === s.id)
+        );
 
         return (
           <li
@@ -282,6 +365,56 @@ export function MediaList({
                 ) : (
                   <p className={`text-xs ${status.className}`}>{status.label}</p>
                 )}
+
+                {isOwner && (
+                  <div className="space-y-1">
+                    {otherLinkedScreens.length > 0 && (
+                      <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                        <span>Also on:</span>
+                        {otherLinkedScreens.map((s, i) => (
+                          <span key={s.id}>
+                            {s.name}
+                            <button
+                              onClick={() => handleUnlinkScreen(item.id, s.id)}
+                              disabled={busyId === item.id}
+                              className="ml-1 text-red-600 underline disabled:opacity-50"
+                              title={`Remove from ${s.name}`}
+                            >
+                              remove
+                            </button>
+                            {i < otherLinkedScreens.length - 1 ? "," : ""}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    {item.duplicateSiblingScreens.length > 0 && (
+                      <p className="text-xs text-muted-foreground/70">
+                        Also duplicated to:{" "}
+                        {item.duplicateSiblingScreens.map((s) => s.name).join(", ")}
+                      </p>
+                    )}
+                    {linkableScreens.length > 0 && (
+                      <select
+                        defaultValue=""
+                        disabled={busyId === item.id}
+                        onChange={(e) => {
+                          handleLinkScreen(item.id, e.target.value);
+                          e.target.value = "";
+                        }}
+                        className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-muted-foreground"
+                      >
+                        <option value="" disabled>
+                          + Also show on…
+                        </option>
+                        {linkableScreens.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
               </div>
 
               {errorId === item.id && (
@@ -317,9 +450,9 @@ export function MediaList({
                 variant="ghost"
                 size="sm"
                 disabled={busyId === item.id}
-                onClick={() => handleDelete(item.id)}
+                onClick={() => handleDelete(item.id, item.linkedScreens)}
               >
-                Delete
+                {item.linkedScreens.length > 1 ? "Remove" : "Delete"}
               </Button>
             )}
           </li>

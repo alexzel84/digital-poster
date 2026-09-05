@@ -945,3 +945,131 @@ email round-trip needed since the user's already authenticated.
    ever hitting the server.
 
 Run `npm run typecheck && npm run lint && npm run build`.
+
+## Link one media item to multiple screens
+
+This is the real fix for the gap in screen duplication: after duplicating
+a screen, the two copies are fully independent — uploading something new
+to one never appears on the other. This feature instead lets you attach
+the *same* media item to several screens at once, so editing it updates
+everywhere it's linked, and uploading once is enough.
+
+The data model already supported this — `screen_media` was always a
+proper many-to-many join table — this just exposes it in the UI for the
+first time.
+
+### What's new
+
+- Each media item (owner only) now shows an "+ Also show on…" dropdown
+  listing your other screens. Picking one attaches the *same* row — not
+  a copy — to that screen too.
+- If it's linked to more than the current screen, you'll see "Also on:
+  ScreenB **remove**" text, letting you unlink it from specific screens.
+- **Delete's meaning changed slightly, on purpose**: it now means "remove
+  from *this* screen." If the item is linked to other screens, they keep
+  it — only this screen's copy of the attachment goes away, and the
+  button relabels itself "Remove" instead of "Delete" to signal that. It
+  only fully deletes the underlying file/database row once it's been
+  removed from every screen it was ever on.
+- Editing an item's expiration/duration updates it everywhere it's
+  linked, since it's genuinely the same row — this is different from
+  duplication, where each screen's copy is independent by design.
+
+### How to test
+
+1. Have at least two screens. Upload an image to Screen A.
+2. On Screen A's media list, use "+ Also show on…" to attach it to Screen
+   B too.
+3. Go to Screen B's page — confirm the same item now appears there.
+4. Change its expiration date from Screen B's page. Go back to Screen A —
+   confirm the change shows up there too (same underlying row).
+5. On Screen A, click the button next to that item — confirm it now says
+   "Remove" (not "Delete"), and the confirmation text mentions it's also
+   on another screen. Confirm it.
+6. Confirm the item disappears from Screen A's list but is still on
+   Screen B, fully intact.
+7. Now delete it from Screen B too (its only remaining screen — button
+   should say "Delete" there). Confirm it's now gone, and check R2 to
+   confirm the actual file was finally removed.
+
+Run `npm run typecheck && npm run lint && npm run build`.
+
+## Fix: prevented double-linking a duplicated screen back to its origin
+
+A real gap in the two features above, together: duplicating Screen A →
+Screen B creates independent media rows, so Screen B's copy of an item
+didn't know it was related to Screen A's copy at all. That meant Screen
+B's "+ Also show on…" dropdown would happily offer "Screen A" as a link
+target — and picking it created a second, genuinely duplicate-looking
+entry in Screen A's own list, since it was linking a *different* row
+that just happened to look identical.
+
+### The fix
+
+- `media.cloned_from_id` — a new column recording which original row a
+  duplicated row came from. Always points at the root of the family, even
+  if you duplicate a duplicate, so lineage never chains.
+- The screen detail page now computes, per item, which other screens hold
+  a sibling from the same duplication family, and:
+  - Shows it informationally: "Also duplicated to: Screen B" (no remove
+    action — this isn't a real link, just visibility).
+  - Excludes those screens from the "+ Also show on…" dropdown entirely,
+    so the double-linking bug is now structurally impossible, not just
+    discouraged.
+- This is purely additive — duplicated screens remain fully independently
+  editable, per your choice to keep Option B (independent copies) over
+  Option A (shared rows). The tracking exists only to prevent this one
+  specific footgun.
+
+### Setup — needs a fresh migration
+
+```sql
+alter table media add column if not exists cloned_from_id uuid references media(id) on delete set null;
+```
+Run that in Supabase's SQL editor (`db/migrations/0005_media_clone_tracking.sql`).
+
+### How to test
+
+1. Create Screen A with one image. Duplicate it to Screen B.
+2. On Screen B's media list, confirm the image shows "Also duplicated to:
+   Screen A" as plain text (no remove button).
+3. Confirm Screen A does NOT appear in Screen B's "+ Also show on…"
+   dropdown — it should be missing from the list entirely.
+4. As a sanity check that real linking still works: create Screen C, and
+   confirm Screen B's item CAN still be linked to Screen C normally (this
+   isn't a family relationship, so it should work exactly like before).
+5. Duplicate Screen B (which is itself a duplicate of A) into Screen D.
+   Confirm Screen D's copy shows "Also duplicated to: Screen A, Screen B"
+   — proving lineage points at the root, not just its immediate parent.
+
+Run `npm run typecheck && npm run lint && npm run build`.
+
+## Periodic reload (reliability safeguard, not a power-management fix)
+
+Added by request, with an important clarification worth restating: this
+does **not** prevent a TV's own firmware-level auto-power-off. That kind
+of feature typically watches for actual remote-control input, which a
+webpage has no way to simulate or influence — the real fix for that
+remains `/help/keep-tv-awake` (disable Auto Power Off / Sleep Timer /
+Energy Saving in the TV's own settings).
+
+What this actually does: `/screen` now does a full page reload every 6
+hours while playing. This is a standard practice in the digital signage
+industry — browsers left running unattended for very long stretches can
+accumulate memory leaks or drift into odd states, and a periodic reload
+is a cheap, well-understood way to self-heal from that class of problem.
+It's a reliability safeguard, unrelated to the power question.
+
+The interval is a single constant (`PERIODIC_RELOAD_MS` in
+`components/screen/player.tsx`), currently 6 hours — easy to change if
+you'd rather have it daily or more/less frequent.
+
+### How to test
+
+1. Temporarily change `PERIODIC_RELOAD_MS` to something short (like
+   `10_000` for 10 seconds) to test without waiting hours.
+2. Load `/screen` on a paired, playing screen and confirm it does a full
+   page reload after that short interval, then resumes playing normally.
+3. Change the constant back to `6 * 60 * 60 * 1000` before deploying.
+
+Run `npm run typecheck && npm run lint && npm run build`.
