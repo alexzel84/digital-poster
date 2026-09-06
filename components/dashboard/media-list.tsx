@@ -138,7 +138,7 @@ export function MediaList({
   }
 
   async function handleDurationSave(id: string, seconds: number) {
-    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 300) {
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) {
       setErrorId(id);
       return;
     }
@@ -280,7 +280,7 @@ export function MediaList({
                       <input
                         type="number"
                         min={1}
-                        max={300}
+                        max={120}
                         defaultValue={item.imageDurationSeconds ?? 8}
                         className="w-16 rounded border border-border px-1.5 py-0.5"
                         id={`dur-${item.id}`}

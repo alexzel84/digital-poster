@@ -39,7 +39,7 @@ export const confirmUploadSchema = z.object({
 
 export const updateMediaSchema = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
-  imageDurationSeconds: z.number().int().positive().max(300).optional(),
+  imageDurationSeconds: z.number().int().positive().max(120).optional(),
 });
 
 export const reorderSchema = z.object({
