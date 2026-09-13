@@ -168,7 +168,7 @@ export function Player({
   }
 
   return (
-    <div className="h-full w-full cursor-none bg-black">
+    <div className="relative h-full w-full cursor-none bg-black">
       {currentItem.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -196,6 +196,16 @@ export function Player({
           }
         />
       )}
+
+      {/* Watermark — global for now, always on. Purely a visual overlay:
+          never touches the uploaded file itself. A per-screen on/off
+          toggle is a natural place to gate behind a future paid tier. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo-watermark.png"
+        alt=""
+        className="pointer-events-none absolute bottom-4 right-4 w-[8%] min-w-[48px] max-w-[160px] opacity-80"
+      />
     </div>
   );
 }
