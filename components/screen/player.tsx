@@ -22,6 +22,12 @@ const LOCAL_EXPIRY_CHECK_MS = 30_000;
 // influenced from a webpage at all — see /help/keep-tv-awake for the
 // actual fix for that). This is purely a reliability safeguard.
 const PERIODIC_RELOAD_MS = 6 * 60 * 60 * 1000; // 6 hours
+// How often to re-check connectivity if the reload was due while offline.
+// Deliberately a plain poll of navigator.onLine rather than relying on the
+// browser's 'online' event alone — some embedded TV browsers have proven
+// unreliable with that event (see the Fullscreen/WakeLock hang issue on
+// the Samsung QM32C). A local synchronous check costs nothing to repeat.
+const OFFLINE_RETRY_CHECK_MS = 5 * 60 * 1000; // 5 minutes
 
 export function Player({
   screenId,
@@ -130,11 +136,35 @@ export function Player({
 
   // Periodic full reload — reliability safeguard, not a power-management
   // feature. See the constant's comment above for why this exists.
+  //
+  // Deliberately checks connectivity first: our Service Worker has no
+  // fetch handler (see public/sw.js) — only actual media is cached
+  // offline via LocalMediaStore, not the page/JS shell itself. Reloading
+  // while genuinely offline could replace already-playing, already-cached
+  // content with the browser's own "no connection" error page — the
+  // opposite of what this safeguard is supposed to do. If offline when
+  // due, defer and keep re-checking rather than reload blindly.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      window.location.reload();
-    }, PERIODIC_RELOAD_MS);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function attemptReload() {
+      if (cancelled) return;
+      if (navigator.onLine) {
+        window.location.reload();
+        return;
+      }
+      logEvent("NETWORK_OFFLINE", { context: "periodic reload deferred" });
+      retryTimer = setTimeout(attemptReload, OFFLINE_RETRY_CHECK_MS);
+    }
+
+    const initialTimer = setTimeout(attemptReload, PERIODIC_RELOAD_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initialTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, []);
 
   // Image auto-advance timer

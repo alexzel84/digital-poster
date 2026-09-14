@@ -1127,3 +1127,33 @@ build` surface anything here, or the counts look wrong once you check
 don't assume it's silently correct just because it type-checks.
 
 Run `npm run typecheck && npm run lint && npm run build && npm test`.
+
+## Fix: periodic reload no longer risks replacing offline playback with a browser error
+
+Real gap found on review: the 6-hour periodic reload (`PERIODIC_RELOAD_MS`
+in `components/screen/player.tsx`) previously called
+`window.location.reload()` unconditionally, with no connectivity check.
+Since our Service Worker deliberately has no fetch handler (only actual
+media is cached offline, via `LocalMediaStore` — not the page/JS shell
+itself), reloading while genuinely offline could fail to reload the app
+at all and leave the browser showing its own "no connection" error page
+— replacing already-working, already-cached offline playback with a
+blank error screen. The exact opposite of what a reliability safeguard
+should do.
+
+**Fix**: before reloading, check `navigator.onLine`. If offline, skip the
+reload and re-check every 5 minutes until connectivity returns, then
+reload. Deliberately uses a plain poll rather than the browser's `online`
+event alone, since embedded TV browsers have already proven unreliable
+with that event elsewhere in this project (see the Fullscreen/WakeLock
+hang issue on the Samsung QM32C).
+
+### How to test
+
+1. In DevTools, throttle to "Offline" a few seconds before the reload
+   would fire (or temporarily shrink `PERIODIC_RELOAD_MS` to test faster).
+   Confirm it does NOT reload while offline — content keeps playing.
+2. Go back online. Within 5 minutes, confirm it reloads on its own.
+3. Confirm a normal online reload still works exactly as before.
+
+Run `npm run typecheck && npm run lint && npm run build`.
