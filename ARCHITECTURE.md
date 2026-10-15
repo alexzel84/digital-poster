@@ -450,3 +450,10 @@ purpose, and worth revisiting once they actually start to matter:
 6. `README.md` — for the historical "why" behind specific decisions and
    detailed manual test steps per feature, once the architecture itself
    makes sense.
+
+
+## Addendum: pairing code refresh
+
+Pairing codes live 15 minutes (`PAIRING_CODE_TTL_MINUTES`). Previously an unpaired screen's code simply expired and
+nothing regenerated it. `POST /api/screens/regenerate-code` (owner only, unpaired screens only) issues a fresh code;
+the dashboard shows a "New code" button and flags an expired code in red.

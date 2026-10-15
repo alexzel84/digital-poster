@@ -1157,3 +1157,7 @@ hang issue on the Samsung QM32C).
 3. Confirm a normal online reload still works exactly as before.
 
 Run `npm run typecheck && npm run lint && npm run build`.
+
+## Pairing code refresh
+Dashboard: unpaired screens show a "New code" button (list + screen page). Expired codes are marked "(expired)".
+Test: wait 15 min (or set `pairing_code_expires_at` in the past in Supabase) -> code shows expired -> click New code -> pair the TV.

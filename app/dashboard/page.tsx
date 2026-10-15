@@ -7,6 +7,7 @@ import { isScreenOnline, formatLastSeen } from "@/lib/screen/online-status";
 import { CreateScreenForm } from "@/components/dashboard/create-screen-form";
 import { DisconnectScreenButton } from "@/components/dashboard/disconnect-screen-button";
 import { CopyCodeButton } from "@/components/dashboard/copy-code-button";
+import { RegenerateCodeButton } from "@/components/dashboard/regenerate-code-button";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -59,6 +60,9 @@ export default async function DashboardPage() {
           <ul className="space-y-3">
             {ownedScreens.map((screen) => {
               const isPaired = screen.screenTokenHash !== null;
+              const codeExpired =
+                !screen.pairingCodeExpiresAt ||
+                screen.pairingCodeExpiresAt.getTime() <= Date.now();
               const online = isPaired && isScreenOnline(screen.lastSeenAt);
 
               return (
@@ -91,11 +95,18 @@ export default async function DashboardPage() {
                         <p className="mt-1 text-sm text-muted-foreground">
                           Not paired — enter code{" "}
                           <CopyCodeButton code={screen.pairingCode} /> on the TV
+                          {codeExpired && (
+                            <span className="ml-1 text-red-600">(expired — tap “New code”)</span>
+                          )}
                         </p>
                       )}
                     </div>
 
-                    {isPaired && <DisconnectScreenButton screenId={screen.id} />}
+                    {isPaired ? (
+                      <DisconnectScreenButton screenId={screen.id} />
+                    ) : (
+                      <RegenerateCodeButton screenId={screen.id} />
+                    )}
                   </div>
                 </li>
               );

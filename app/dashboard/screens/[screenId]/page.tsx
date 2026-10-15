@@ -11,6 +11,7 @@ import { UploadMedia } from "@/components/dashboard/upload-media";
 import { MediaList, type MediaListItem } from "@/components/dashboard/media-list";
 import { DisconnectScreenButton } from "@/components/dashboard/disconnect-screen-button";
 import { CopyCodeButton } from "@/components/dashboard/copy-code-button";
+import { RegenerateCodeButton } from "@/components/dashboard/regenerate-code-button";
 import { ShareScreenButton } from "@/components/dashboard/share-screen-button";
 import { CollaboratorsList } from "@/components/dashboard/collaborators-list";
 import { RenameScreenForm } from "@/components/dashboard/rename-screen-form";
@@ -198,9 +199,16 @@ export default async function ScreenDetailPage({
                 <span>Last seen {formatLastSeen(screen.lastSeenAt)}</span>
               </p>
             ) : (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Not paired — enter code <CopyCodeButton code={screen.pairingCode} /> on the TV
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                <p>
+                  Not paired — enter code <CopyCodeButton code={screen.pairingCode} /> on the TV
+                  {(!screen.pairingCodeExpiresAt ||
+                    screen.pairingCodeExpiresAt.getTime() <= Date.now()) && (
+                    <span className="ml-1 text-red-600">(expired — tap “New code”)</span>
+                  )}
+                </p>
+                <RegenerateCodeButton screenId={screen.id} />
+              </div>
             ))}
           {isOwner ? (
             <ScreenDetailsForm
