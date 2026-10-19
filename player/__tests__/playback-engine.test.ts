@@ -122,4 +122,75 @@ describe("PlaybackEngine", () => {
     expect(engine.state).toBe("playing");
     expect(engine.currentItem?.id).toBe("a");
   });
+
+  describe("scheduling", () => {
+    const TZ = "America/Chicago";
+    // Wed 2026-11-04 18:30 CST / Thu 2026-11-05 18:30 CST
+    const wed1830 = new Date("2026-11-05T00:30:00Z");
+    const thu1830 = new Date("2026-11-06T00:30:00Z");
+    const slot = [{ kind: "weekly" as const, days: [3], start: "18:00", end: "19:00" }];
+
+    it("plays only the scheduled item while its slot is active", () => {
+      const engine = new PlaybackEngine([], TZ);
+      engine.setItems(
+        [
+          item({ id: "default", sortOrder: 0 }),
+          item({ id: "promo", sortOrder: 1, schedule: slot }),
+        ],
+        TZ,
+        wed1830
+      );
+      expect(engine.itemCount).toBe(1);
+      expect(engine.currentItem?.id).toBe("promo");
+    });
+
+    it("falls back to default items outside the slot", () => {
+      const engine = new PlaybackEngine([], TZ);
+      engine.setItems(
+        [
+          item({ id: "default", sortOrder: 0 }),
+          item({ id: "promo", sortOrder: 1, schedule: slot }),
+        ],
+        TZ,
+        thu1830
+      );
+      expect(engine.currentItem?.id).toBe("default");
+    });
+
+    it("goes dark (no playable items, but totalCount > 0) when only scheduled items exist", () => {
+      const engine = new PlaybackEngine([], TZ);
+      engine.setItems([item({ id: "promo", schedule: slot })], TZ, thu1830);
+      expect(engine.currentItem).toBeNull();
+      expect(engine.itemCount).toBe(0);
+      expect(engine.totalCount).toBe(1);
+    });
+
+    it("refresh() switches when a slot starts and ends, and reports changes", () => {
+      const engine = new PlaybackEngine([], TZ);
+      engine.setItems(
+        [
+          item({ id: "default", sortOrder: 0 }),
+          item({ id: "promo", sortOrder: 1, schedule: slot }),
+        ],
+        TZ,
+        thu1830
+      );
+      expect(engine.refresh(thu1830)).toBe(false);
+      expect(engine.refresh(wed1830)).toBe(true);
+      expect(engine.currentItem?.id).toBe("promo");
+      expect(engine.refresh(thu1830)).toBe(true);
+      expect(engine.currentItem?.id).toBe("default");
+    });
+
+    it("keeps the current item when the playable set changes but it is still playable", () => {
+      const two = [
+        item({ id: "a", sortOrder: 0 }),
+        item({ id: "b", sortOrder: 1 }),
+      ];
+      const engine = new PlaybackEngine(two, TZ);
+      engine.advance(); // on b
+      engine.setItems([...two, item({ id: "c", sortOrder: 2 })], TZ);
+      expect(engine.currentItem?.id).toBe("b");
+    });
+  });
 });

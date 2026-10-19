@@ -66,6 +66,7 @@ export async function POST(
       expiresAt: media.expiresAt,
       clonedFromId: media.clonedFromId,
       sortOrder: screenMedia.sortOrder,
+      schedule: screenMedia.schedule,
     })
     .from(screenMedia)
     .innerJoin(media, eq(screenMedia.mediaId, media.id))
@@ -80,6 +81,7 @@ export async function POST(
         name: parsed.data.name ?? `${sourceScreen.name} (Copy)`,
         address: sourceScreen.address,
         businessType: sourceScreen.businessType,
+        timezone: sourceScreen.timezone,
         pairingCode: generatePairingCode(),
         pairingCodeExpiresAt: pairingCodeExpiresAt(),
         manifestVersion: 0,
@@ -112,6 +114,7 @@ export async function POST(
         screenId: newScreen!.id,
         mediaId: newMediaId,
         sortOrder: item.sortOrder,
+        schedule: item.schedule,
       });
     }
 

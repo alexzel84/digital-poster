@@ -54,6 +54,7 @@ export async function GET(
       imageDurationSeconds: media.imageDurationSeconds,
       expiresAt: media.expiresAt,
       sortOrder: screenMedia.sortOrder,
+      schedule: screenMedia.schedule,
     })
     .from(screenMedia)
     .innerJoin(media, eq(screenMedia.mediaId, media.id))
@@ -77,12 +78,16 @@ export async function GET(
       duration: row.type === "image" ? row.imageDurationSeconds ?? 8 : null,
       expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
       sortOrder: row.sortOrder,
+      // Rules are evaluated on the TV (in `timezone`), not here — that is
+      // what keeps scheduled playback working offline.
+      schedule: row.schedule && row.schedule.length > 0 ? row.schedule : null,
     }))
   );
 
   return NextResponse.json({
     screenId: screen.id,
     version: screen.manifestVersion,
+    timezone: screen.timezone,
     items,
   });
 }

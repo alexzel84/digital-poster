@@ -52,6 +52,7 @@ export default async function ScreenDetailPage({
       expiresAt: media.expiresAt,
       clonedFromId: media.clonedFromId,
       sortOrder: screenMedia.sortOrder,
+      schedule: screenMedia.schedule,
       uploaderUserId: media.userId,
       uploaderEmail: users.email,
     })
@@ -70,6 +71,7 @@ export default async function ScreenDetailPage({
       imageDurationSeconds: row.imageDurationSeconds,
       expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
       sortOrder: row.sortOrder,
+      schedule: row.schedule ?? null,
       uploaderUserId: row.uploaderUserId,
       uploaderEmail: row.uploaderEmail,
       thumbnailUrl:
@@ -215,6 +217,7 @@ export default async function ScreenDetailPage({
               screenId={screen.id}
               initialAddress={screen.address}
               initialBusinessType={screen.businessType}
+              initialTimezone={screen.timezone}
             />
           ) : (
             (screen.address || screen.businessType) && (
@@ -246,6 +249,7 @@ export default async function ScreenDetailPage({
         isOwner={isOwner}
         currentUserId={user.id}
         otherScreens={otherScreens}
+        timezone={screen.timezone}
       />
 
       {isOwner && (

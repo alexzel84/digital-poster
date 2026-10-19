@@ -3,6 +3,7 @@ import type { PlaybackItem } from "./PlaybackEngine";
 export interface Manifest {
   screenId: string;
   version: number;
+  timezone?: string; // IANA zone the schedules are evaluated in (absent on old servers = UTC)
   items: PlaybackItem[];
 }
 

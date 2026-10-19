@@ -4,19 +4,35 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocompleteInput } from "@/components/dashboard/address-autocomplete-input";
 
+function timeZoneOptions(current: string): string[] {
+  let zones: string[] = [];
+  try {
+    zones = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.(
+      "timeZone"
+    ) ?? [];
+  } catch {
+    zones = [];
+  }
+  const set = new Set(["UTC", ...zones, current]);
+  return [...set].sort();
+}
+
 export function ScreenDetailsForm({
   screenId,
   initialAddress,
   initialBusinessType,
+  initialTimezone,
 }: {
   screenId: string;
   initialAddress: string | null;
   initialBusinessType: string | null;
+  initialTimezone: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [address, setAddress] = useState(initialAddress ?? "");
   const [businessType, setBusinessType] = useState(initialBusinessType ?? "");
+  const [timezone, setTimezone] = useState(initialTimezone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +46,7 @@ export function ScreenDetailsForm({
         body: JSON.stringify({
           address: address.trim() || null,
           businessType: businessType.trim() || null,
+          timezone,
         }),
       });
       if (!res.ok) {
@@ -50,14 +67,22 @@ export function ScreenDetailsForm({
   if (!editing) {
     const hasDetails = initialAddress || initialBusinessType;
     return (
-      <button
-        onClick={() => setEditing(true)}
-        className="mt-1 block text-sm text-muted-foreground underline decoration-dotted"
-      >
-        {hasDetails
-          ? [initialBusinessType, initialAddress].filter(Boolean).join(" · ")
-          : "Add address / business type"}
-      </button>
+      <div className="mt-1">
+        <button
+          onClick={() => setEditing(true)}
+          className="block text-sm text-muted-foreground underline decoration-dotted"
+        >
+          {hasDetails
+            ? [initialBusinessType, initialAddress].filter(Boolean).join(" · ")
+            : "Add address / business type"}
+        </button>
+        <button
+          onClick={() => setEditing(true)}
+          className="mt-0.5 block text-xs text-muted-foreground/70 underline decoration-dotted"
+        >
+          Time zone: {initialTimezone}
+        </button>
+      </div>
     );
   }
 
@@ -75,6 +100,20 @@ export function ScreenDetailsForm({
         placeholder="Address"
         className="w-64 rounded border border-border px-2 py-1 text-sm"
       />
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        Time zone (schedules use this)
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          className="w-64 rounded border border-border bg-background px-2 py-1 text-sm text-foreground"
+        >
+          {timeZoneOptions(initialTimezone).map((tz) => (
+            <option key={tz} value={tz}>
+              {tz}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="flex items-center gap-2">
         <button onClick={handleSave} disabled={loading} className="font-medium underline">
           Save
@@ -83,6 +122,7 @@ export function ScreenDetailsForm({
           onClick={() => {
             setAddress(initialAddress ?? "");
             setBusinessType(initialBusinessType ?? "");
+            setTimezone(initialTimezone);
             setEditing(false);
             setError(null);
           }}

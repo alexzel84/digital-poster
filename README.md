@@ -1161,3 +1161,12 @@ Run `npm run typecheck && npm run lint && npm run build`.
 ## Pairing code refresh
 Dashboard: unpaired screens show a "New code" button (list + screen page). Expired codes are marked "(expired)".
 Test: wait 15 min (or set `pairing_code_expires_at` in the past in Supabase) -> code shows expired -> click New code -> pair the TV.
+
+## Scheduled playback
+Each image/video on a screen can have a schedule (per screen, so the same file can have different schedules on different screens).
+- Rules: "every week" (pick days + start/end time, optional from/until dates) or "one date" (date + start/end time). No overnight windows - split into two rules.
+- Items with NO schedule are "default" content. While any scheduled item is active it takes over; otherwise defaults play; if there are no defaults the TV shows a dark screen.
+- Times are in the screen's time zone (screen details -> "Time zone"; new screens take the browser's zone, existing ones are UTC until you set it).
+- Evaluated on the TV itself every 30s (works offline). All files are still downloaded ahead of time.
+- Needs migration `db/migrations/0006_schedule_timezone.sql` (run in the Supabase SQL editor BEFORE deploying).
+Test: set the time zone, give an image a rule starting 2-3 minutes from now, keep another image without a schedule; within ~30s of the start time the TV switches to the scheduled one, and back after the end time.

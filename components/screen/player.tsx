@@ -62,7 +62,7 @@ export function Player({
     // LocalMediaStore, delete what's gone, and get back items resolved to
     // local blob URLs (falling back to network only if not cached yet).
     const resolvedItems = await reconcileManifest(manifest);
-    engineRef.current.setItems(resolvedItems);
+    engineRef.current.setItems(resolvedItems, manifest.timezone ?? "UTC");
     setCurrentItem(engineRef.current.currentItem);
     setHasSynced(true);
   }, []);
@@ -126,8 +126,12 @@ export function Player({
       for (const item of engine.getItems()) {
         if (!isMediaActive(item.expiresAt ? new Date(item.expiresAt) : null, now)) {
           logEvent("MEDIA_EXPIRED", { itemId: item.id });
-          engine.removeItem(item.id);
+          engine.removeItem(item.id, now);
         }
+      }
+      // Scheduled slots start/end by the TV's own clock, offline included.
+      if (engine.refresh(now)) {
+        logEvent("SCHEDULE_CHANGED", { playable: engine.itemCount });
       }
       setCurrentItem(engine.currentItem);
     }, LOCAL_EXPIRY_CHECK_MS);
@@ -189,6 +193,11 @@ export function Player({
   }
 
   if (!currentItem) {
+    // Items exist but none is scheduled for right now: dark screen (no
+    // "upload your first poster" message — the screen is configured).
+    if (engineRef.current.totalCount > 0) {
+      return <div className="h-full w-full cursor-none bg-black" />;
+    }
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black text-center text-white">
         <p className="text-2xl font-light">Your screen is ready.</p>

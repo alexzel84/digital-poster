@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { timezoneSchema } from "@/lib/validation/schedule";
 
 export const createScreenSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   address: z.string().trim().max(200).optional(),
   businessType: z.string().trim().max(100).optional(),
+  timezone: timezoneSchema.optional(),
 });
 
 export const renameScreenSchema = z.object({
@@ -14,6 +16,7 @@ export const updateScreenSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   address: z.string().trim().max(200).nullable().optional(),
   businessType: z.string().trim().max(100).nullable().optional(),
+  timezone: timezoneSchema.optional(),
 });
 
 export const duplicateScreenSchema = z.object({

@@ -7,7 +7,9 @@ import {
   bigint,
   pgEnum,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
+import type { ScheduleRule } from "@/lib/schedule/schedule";
 import { relations } from "drizzle-orm";
 
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video"]);
@@ -34,6 +36,8 @@ export const screens = pgTable("screens", {
   name: text("name").notNull(),
   address: text("address"),
   businessType: text("business_type"),
+  // IANA zone (e.g. "America/Chicago"). Schedules are evaluated in this zone.
+  timezone: text("timezone").notNull().default("UTC"),
   pairingCode: text("pairing_code").notNull(),
   pairingCodeExpiresAt: timestamp("pairing_code_expires_at", {
     withTimezone: true,
@@ -90,6 +94,9 @@ export const screenMedia = pgTable(
       .notNull()
       .references(() => media.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").notNull().default(0),
+    // null / empty = no schedule: plays as "default" content whenever no
+    // scheduled item is active. See lib/schedule/schedule.ts.
+    schedule: jsonb("schedule").$type<ScheduleRule[] | null>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

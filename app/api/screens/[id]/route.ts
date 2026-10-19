@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { screens, media, screenMedia } from "@/lib/db/schema";
@@ -34,6 +34,11 @@ export async function PATCH(
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if ("address" in parsed.data) updates.address = parsed.data.address || null;
   if ("businessType" in parsed.data) updates.businessType = parsed.data.businessType || null;
+  if (parsed.data.timezone !== undefined) {
+    updates.timezone = parsed.data.timezone;
+    // Schedules are evaluated in this zone, so the TV must re-fetch.
+    updates.manifestVersion = sql`${screens.manifestVersion} + 1`;
+  }
 
   // Owner only — editing screen details is not a contributor privilege.
   const [updated] = await db

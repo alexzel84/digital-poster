@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       address: parsed.data.address || null,
       businessType: parsed.data.businessType || null,
+      timezone: parsed.data.timezone ?? "UTC",
       pairingCode: generatePairingCode(),
       pairingCodeExpiresAt: pairingCodeExpiresAt(),
       manifestVersion: 0,

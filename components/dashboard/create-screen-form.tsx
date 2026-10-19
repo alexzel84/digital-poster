@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressAutocompleteInput } from "@/components/dashboard/address-autocomplete-input";
 
+function browserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function CreateScreenForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -27,6 +35,7 @@ export function CreateScreenForm() {
         name,
         address: address.trim() || undefined,
         businessType: businessType.trim() || undefined,
+        timezone: browserTimeZone(),
       }),
     });
 

@@ -457,3 +457,13 @@ purpose, and worth revisiting once they actually start to matter:
 Pairing codes live 15 minutes (`PAIRING_CODE_TTL_MINUTES`). Previously an unpaired screen's code simply expired and
 nothing regenerated it. `POST /api/screens/regenerate-code` (owner only, unpaired screens only) issues a fresh code;
 the dashboard shows a "New code" button and flags an expired code in red.
+
+
+## Addendum: scheduled playback
+
+- Data: `screens.timezone` (IANA, default UTC) and `screen_media.schedule` (jsonb array of rules, null = default content). Migration 0006.
+- Pure logic in `lib/schedule/schedule.ts` (rule matching, `selectPlayable`); validation in `lib/validation/schedule.ts`.
+- Semantics: active scheduled items replace the whole loop; otherwise unscheduled items play; otherwise dark screen. Overnight windows are intentionally unsupported (two rules instead).
+- The manifest carries `timezone` and each item's `schedule`; the TV evaluates them with its own clock (`PlaybackEngine.refresh`, called from the 30s local sweep in `components/screen/player.tsx`), so scheduling works offline. A wrong TV clock means wrong schedule times.
+- API: `PATCH /api/media/[id]/screens/[screenId]` sets/clears one placement's schedule (owner: any item; contributor: own uploads). `PATCH /api/screens/[id]` accepts `timezone`. Both bump `manifest_version`.
+- Duplicating a screen copies schedules and the time zone.

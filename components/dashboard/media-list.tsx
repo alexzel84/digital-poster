@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ScheduleEditor } from "@/components/dashboard/schedule-editor";
+import { describeRule, hasSchedule, type ScheduleRule } from "@/lib/schedule/schedule";
 
 export interface LinkedScreen {
   id: string;
@@ -17,6 +19,7 @@ export interface MediaListItem {
   imageDurationSeconds: number | null;
   expiresAt: string | null; // ISO string
   sortOrder: number;
+  schedule: ScheduleRule[] | null; // this item's schedule ON THIS SCREEN; null = plays by default
   thumbnailUrl: string | null;
   uploaderUserId: string;
   uploaderEmail: string;
@@ -38,12 +41,14 @@ export function MediaList({
   isOwner,
   currentUserId,
   otherScreens,
+  timezone,
 }: {
   screenId: string;
   initialItems: MediaListItem[];
   isOwner: boolean;
   currentUserId: string;
   otherScreens: LinkedScreen[];
+  timezone: string;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(
@@ -51,6 +56,7 @@ export function MediaList({
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDurationId, setEditingDurationId] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
 
@@ -160,6 +166,33 @@ export function MediaList({
       );
       setBusyId(null);
       setEditingDurationId(null);
+      router.refresh();
+    } catch {
+      setErrorId(id);
+      setBusyId(null);
+    }
+  }
+
+  async function handleScheduleSave(id: string, rules: ScheduleRule[] | null) {
+    setBusyId(id);
+    setErrorId(null);
+    try {
+      const res = await fetch(`/api/media/${id}/screens/${screenId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedule: rules }),
+      });
+      if (!res.ok) {
+        setErrorId(id);
+        setBusyId(null);
+        return;
+      }
+      const saved = rules && rules.length > 0 ? rules : null;
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, schedule: saved } : item))
+      );
+      setBusyId(null);
+      setEditingScheduleId(null);
       router.refresh();
     } catch {
       setErrorId(id);
@@ -364,6 +397,45 @@ export function MediaList({
                   </button>
                 ) : (
                   <p className={`text-xs ${status.className}`}>{status.label}</p>
+                )}
+
+                {editingScheduleId === item.id ? (
+                  <ScheduleEditor
+                    initial={item.schedule}
+                    timezone={timezone}
+                    saving={busyId === item.id}
+                    error={errorId === item.id}
+                    onSave={(rules) => handleScheduleSave(item.id, rules)}
+                    onCancel={() => {
+                      setEditingScheduleId(null);
+                      setErrorId(null);
+                    }}
+                  />
+                ) : (
+                  <div className="text-xs">
+                    {hasSchedule(item.schedule) ? (
+                      <div className="space-y-0.5">
+                        <p className="font-medium">🗓 Scheduled</p>
+                        {item.schedule.map((rule, i) => (
+                          <p key={i} className="text-muted-foreground">
+                            {describeRule(rule)}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {canManage ? (
+                      <button
+                        className="block text-muted-foreground underline decoration-dotted"
+                        onClick={() => setEditingScheduleId(item.id)}
+                      >
+                        {hasSchedule(item.schedule)
+                          ? "Edit schedule"
+                          : "Plays by default · Set schedule"}
+                      </button>
+                    ) : !hasSchedule(item.schedule) ? (
+                      <p className="text-muted-foreground">Plays by default</p>
+                    ) : null}
+                  </div>
                 )}
 
                 {isOwner && (
