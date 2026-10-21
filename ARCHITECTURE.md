@@ -467,3 +467,8 @@ the dashboard shows a "New code" button and flags an expired code in red.
 - The manifest carries `timezone` and each item's `schedule`; the TV evaluates them with its own clock (`PlaybackEngine.refresh`, called from the 30s local sweep in `components/screen/player.tsx`), so scheduling works offline. A wrong TV clock means wrong schedule times.
 - API: `PATCH /api/media/[id]/screens/[screenId]` sets/clears one placement's schedule (owner: any item; contributor: own uploads). `PATCH /api/screens/[id]` accepts `timezone`. Both bump `manifest_version`.
 - Duplicating a screen copies schedules and the time zone.
+
+
+## Addendum: reload only when the server is truly reachable
+
+The 6-hour reload used `navigator.onLine`, which is true on Wi-Fi with no internet, so the TV reloaded into the browser's error page. It now calls `canReachServer()` (`lib/screen/connectivity-probe.ts`: HEAD `/screen`, 8s timeout) and defers/retries every 5 min if that fails.

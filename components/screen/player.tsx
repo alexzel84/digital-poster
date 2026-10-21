@@ -9,6 +9,7 @@ import { reconcileManifest } from "@/player/SyncManager";
 import { clearScreenAuth } from "@/lib/screen/local-auth";
 import { isMediaActive } from "@/lib/media/status";
 import { enterFullscreen } from "@/lib/screen/fullscreen";
+import { canReachServer } from "@/lib/screen/connectivity-probe";
 import { logEvent } from "@/lib/screen/logger";
 import { StartScreen } from "@/components/screen/start-screen";
 
@@ -23,10 +24,10 @@ const LOCAL_EXPIRY_CHECK_MS = 30_000;
 // actual fix for that). This is purely a reliability safeguard.
 const PERIODIC_RELOAD_MS = 6 * 60 * 60 * 1000; // 6 hours
 // How often to re-check connectivity if the reload was due while offline.
-// Deliberately a plain poll of navigator.onLine rather than relying on the
-// browser's 'online' event alone — some embedded TV browsers have proven
-// unreliable with that event (see the Fullscreen/WakeLock hang issue on
-// the Samsung QM32C). A local synchronous check costs nothing to repeat.
+// Deliberately a poll (with a real reachability probe, see
+// lib/screen/connectivity-probe.ts) rather than relying on the browser's
+// 'online' event or navigator.onLine — some embedded TV browsers are
+// unreliable with those, and onLine is true on Wi-Fi without internet.
 const OFFLINE_RETRY_CHECK_MS = 5 * 60 * 1000; // 5 minutes
 
 export function Player({
@@ -141,7 +142,7 @@ export function Player({
   // Periodic full reload — reliability safeguard, not a power-management
   // feature. See the constant's comment above for why this exists.
   //
-  // Deliberately checks connectivity first: our Service Worker has no
+  // Deliberately checks that the server is reachable first: our Service Worker has no
   // fetch handler (see public/sw.js) — only actual media is cached
   // offline via LocalMediaStore, not the page/JS shell itself. Reloading
   // while genuinely offline could replace already-playing, already-cached
@@ -152,12 +153,15 @@ export function Player({
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    function attemptReload() {
+    async function attemptReload() {
       if (cancelled) return;
-      if (navigator.onLine) {
-        window.location.reload();
+      // navigator.onLine is NOT enough: it stays true on Wi-Fi with no
+      // internet. Only reload if our own server is actually reachable.
+      if (await canReachServer()) {
+        if (!cancelled) window.location.reload();
         return;
       }
+      if (cancelled) return;
       logEvent("NETWORK_OFFLINE", { context: "periodic reload deferred" });
       retryTimer = setTimeout(attemptReload, OFFLINE_RETRY_CHECK_MS);
     }
